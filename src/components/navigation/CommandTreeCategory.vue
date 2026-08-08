@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import {
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  Pencil,
-  Terminal,
-  X,
-} from 'lucide-vue-next';
+import { ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-vue-next';
 import type { CommandTreeCategory, DeleteTarget, EditTarget } from 'src/types/commands';
+import CommandTreeItem from 'src/components/navigation/CommandTreeItem.vue';
+import TreeRowActions from 'src/components/navigation/TreeRowActions.vue';
 
 defineProps<{
   category: CommandTreeCategory;
@@ -54,24 +48,13 @@ const emit = defineEmits<{
         {{ category.commands.length }}
       </span>
 
-      <span v-if="editMode" class="ml-auto flex shrink-0 items-center gap-0.5">
-        <button
-          type="button"
-          class="rounded p-1 text-slate-400 transition hover:bg-sky-500/15 hover:text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
-          :aria-label="`Edit category ${category.title}`"
-          @click.stop="emit('edit', { type: 'category', categoryId: category.categoryId })"
-        >
-          <Pencil :size="14" />
-        </button>
-        <button
-          type="button"
-          class="rounded p-1 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
-          :aria-label="`Delete category ${category.title}`"
-          @click.stop="emit('remove', { type: 'category', categoryId: category.categoryId })"
-        >
-          <X :size="15" />
-        </button>
-      </span>
+      <TreeRowActions
+        v-if="editMode"
+        :edit-label="`Edit category ${category.title}`"
+        :delete-label="`Delete category ${category.title}`"
+        @edit="emit('edit', { type: 'category', categoryId: category.categoryId })"
+        @remove="emit('remove', { type: 'category', categoryId: category.categoryId })"
+      />
     </div>
 
     <div
@@ -79,52 +62,16 @@ const emit = defineEmits<{
       role="group"
       class="ml-3.5 mt-1 border-l border-slate-700/60 pl-3 space-y-1"
     >
-      <div
+      <CommandTreeItem
         v-for="command in category.commands"
         :key="command.commandId"
-        role="treeitem"
-        :data-tree-id="command.commandId"
-        :aria-selected="activeCommandId === command.commandId"
-        aria-level="2"
-        tabindex="-1"
-        :class="[
-          'group relative flex min-h-[38px] items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-all cursor-pointer outline-none select-none focus-visible:ring-2 focus-visible:ring-sky-400',
-          activeCommandId === command.commandId
-            ? 'bg-sky-600 text-white font-medium shadow-md shadow-sky-500/25'
-            : 'text-slate-300 hover:bg-slate-800/80 hover:text-white',
-        ]"
-        :title="command.definition.description"
-        @click="emit('select', command.commandId)"
-      >
-        <Terminal
-          :size="15"
-          :class="[
-            'shrink-0 transition-colors',
-            activeCommandId === command.commandId
-              ? 'text-sky-100'
-              : 'text-slate-400 group-hover:text-sky-400',
-          ]"
-        />
-        <span class="truncate">{{ command.title }}</span>
-        <span v-if="editMode" class="ml-auto flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            class="rounded p-1 text-slate-400 transition hover:bg-sky-500/15 hover:text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
-            :aria-label="`Edit command ${command.title}`"
-            @click.stop="emit('edit', { type: 'command', commandId: command.commandId })"
-          >
-            <Pencil :size="14" />
-          </button>
-          <button
-            type="button"
-            class="rounded p-1 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
-            :aria-label="`Delete command ${command.title}`"
-            @click.stop="emit('remove', { type: 'command', commandId: command.commandId })"
-          >
-            <X :size="15" />
-          </button>
-        </span>
-      </div>
+        :command="command"
+        :active="activeCommandId === command.commandId"
+        :edit-mode="editMode"
+        @select="emit('select', $event)"
+        @edit="emit('edit', { type: 'command', commandId: $event })"
+        @remove="emit('remove', { type: 'command', commandId: $event })"
+      />
     </div>
   </div>
 </template>

@@ -11,6 +11,11 @@ export type CommandTreeCategory = {
   title: string;
   commands: CommandTreeCommand[];
 };
+export type CommandTreeRow = {
+  id: string;
+  categoryId: string;
+  commandId?: string;
+};
 export type DeleteTarget =
   { type: 'category'; categoryId: string } | { type: 'command'; commandId: string };
 export type EditTarget = DeleteTarget;
