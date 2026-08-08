@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient matching app sidebar slate gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+
+    <!-- Terminal Glow / Inner Highlight -->
+    <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+
+    <!-- Container Border Ring -->
+    <linearGradient id="border-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.2" />
+    </linearGradient>
+
+    <!-- Drop Shadow for Icon Depth -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#38bdf8" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Rounded Squircle Background -->
+  <rect x="32" y="32" width="448" height="448" rx="112" ry="112" fill="url(#bg-grad)" stroke="url(#border-grad)" stroke-width="12" />
+
+  <!-- Inner Soft Container Light -->
+  <rect x="48" y="48" width="416" height="416" rx="96" ry="96" fill="#38bdf8" fill-opacity="0.06" />
+
+  <!-- Terminal Icon (>_) -->
+  <g filter="url(#glow)">
+    <!-- Chevron '>' -->
+    <path d="M 152 160 L 248 256 L 152 352" 
+          fill="none" 
+          stroke="url(#icon-grad)" 
+          stroke-width="44" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+    <!-- Horizontal Cursor '_' -->
+    <path d="M 276 352 L 360 352" 
+          fill="none" 
+          stroke="url(#icon-grad)" 
+          stroke-width="44" 
+          stroke-linecap="round" />
+  </g>
+</svg>

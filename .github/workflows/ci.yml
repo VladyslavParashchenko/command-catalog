@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  test:
+    name: Test
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  deploy:
+    name: Deploy to surge.sh
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # No `url:` here — GitHub renders it publicly and refuses to expand a secret into it.
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Keeps GITHUB_TOKEN out of .git/config, where the deploy tooling could read it.
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Add surge SPA fallback
+        # surge serves 200.html for unknown paths, so deep links land on the app instead of a 404.
+        run: cp dist/index.html dist/200.html
+
+      - name: Deploy
+        env:
+          # Both values reach the shell as data, never as part of the command text.
+          SURGE_DOMAIN: ${{ secrets.SURGE_DOMAIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+        run: pnpm dlx surge@0.41.2 ./dist "$SURGE_DOMAIN"
