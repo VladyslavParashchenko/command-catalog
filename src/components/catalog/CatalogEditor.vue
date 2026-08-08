@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { FileDown, Plus, Settings2 } from 'lucide-vue-next';
+import { FileDown, Pencil, Plus, Save, Settings2 } from 'lucide-vue-next';
 import type { Category, Command, TemplateOption } from 'src/types/catalog';
 import { parseCommandJson, validateCommandInput } from 'src/lib/command-import';
 import { optionTypes } from 'src/schemes/command';
@@ -15,6 +15,8 @@ type ParameterDraft = {
   example: string;
   type: OptionType;
   optional: boolean;
+  defaultValue?: TemplateOption['defaultValue'];
+  restrictions?: TemplateOption['restrictions'];
 };
 
 const props = withDefaults(
@@ -23,22 +25,54 @@ const props = withDefaults(
 );
 const emit = defineEmits<{
   createCommand: [categoryId: string, command: Omit<Command, 'id'>];
+  updateCommand: [commandId: string, categoryId: string, command: Omit<Command, 'id'>];
 }>();
 
 const isOpen = ref(false);
 const tab = ref<'form' | 'json'>('form');
+const editedId = ref('');
 const command = reactive({ categoryId: '', name: '', description: '', template: '' });
 const parameters = ref<ParameterDraft[]>([]);
 const json = ref('');
 const error = ref('');
 const hasCategories = computed(() => props.categories.length > 0);
+const isEditing = computed(() => Boolean(editedId.value));
 
 function createParameter(): ParameterDraft {
   return { name: '', key: '', example: '', type: 'string', optional: false };
 }
+function resetDraft() {
+  Object.assign(command, { name: '', description: '', template: '' });
+  parameters.value = [];
+  json.value = '';
+}
 function openCommand() {
   error.value = '';
+  if (editedId.value) resetDraft();
+  editedId.value = '';
   if (!command.categoryId) command.categoryId = props.categories[0]?.id ?? '';
+  isOpen.value = true;
+}
+function openCommandEdit(existing: Command, categoryId: string) {
+  error.value = '';
+  tab.value = 'form';
+  editedId.value = existing.id;
+  Object.assign(command, {
+    categoryId,
+    name: existing.name,
+    description: existing.description,
+    template: existing.template,
+  });
+  parameters.value = Object.entries(existing.options).map(([name, option]) => ({
+    name,
+    key: option.key ?? '',
+    example: option.example ?? '',
+    type: option.type,
+    optional: option.optional,
+    defaultValue: option.defaultValue,
+    restrictions: option.restrictions,
+  }));
+  json.value = '';
   isOpen.value = true;
 }
 function close() {
@@ -51,7 +85,6 @@ function submitCommand() {
     return;
   }
   const names = parameters.value.map((item) => item.name.trim()).filter(Boolean);
-  // Duplicates would silently collapse into one key once options becomes an object.
   if (new Set(names).size !== names.length) {
     error.value = 'Parameter names must be unique.';
     return;
@@ -66,7 +99,8 @@ function submitCommand() {
           example: item.example.trim() || undefined,
           type: item.type,
           optional: item.optional,
-          restrictions: {},
+          defaultValue: item.defaultValue,
+          restrictions: item.restrictions ?? {},
         },
       ]),
   );
@@ -80,9 +114,10 @@ function submitCommand() {
     error.value = result.error;
     return;
   }
-  emit('createCommand', command.categoryId, result.command);
-  Object.assign(command, { name: '', description: '', template: '' });
-  parameters.value = [];
+  if (editedId.value) emit('updateCommand', editedId.value, command.categoryId, result.command);
+  else emit('createCommand', command.categoryId, result.command);
+  editedId.value = '';
+  resetDraft();
   close();
 }
 function submitJson() {
@@ -112,7 +147,7 @@ function downloadSkill() {
   URL.revokeObjectURL(url);
 }
 
-defineExpose({ openCommand });
+defineExpose({ openCommand, openCommandEdit });
 </script>
 
 <template>
@@ -128,15 +163,17 @@ defineExpose({ openCommand });
 
   <Modal
     :open="isOpen"
-    label="New command"
-    title="New command"
+    :label="isEditing ? 'Edit command' : 'New command'"
+    :title="isEditing ? 'Edit command' : 'New command'"
     description="Changes are saved on this device."
     size="lg"
     @close="close"
   >
-    <template #icon><Settings2 :size="20" /></template>
+    <template #icon>
+      <component :is="isEditing ? Pencil : Settings2" :size="20" />
+    </template>
 
-    <div class="border-b border-slate-200 px-6 pt-4">
+    <div v-if="!isEditing" class="border-b border-slate-200 px-6 pt-4">
       <button
         type="button"
         :class="[
@@ -171,7 +208,7 @@ defineExpose({ openCommand });
     </p>
 
     <form
-      v-if="tab === 'json'"
+      v-if="!isEditing && tab === 'json'"
       id="command-form"
       class="grid gap-5 p-6"
       @submit.prevent="submitJson"
@@ -334,7 +371,8 @@ defineExpose({ openCommand });
         :disabled="!hasCategories"
         class="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-5 text-base font-semibold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
-        <Plus :size="18" /> Create command
+        <component :is="isEditing ? Save : Plus" :size="18" />
+        {{ isEditing ? 'Save command' : 'Create command' }}
       </button>
     </template>
   </Modal>

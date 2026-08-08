@@ -58,6 +58,37 @@ export async function addCommand(categoryId: string, command: Omit<Command, 'id'
   return created;
 }
 
+export async function renameCategory(categoryId: string, name: string) {
+  categories.value = categories.value.map((category) =>
+    category.id === categoryId ? { ...category, name: name.trim() } : category,
+  );
+  await saveCategories();
+}
+
+export async function updateCommand(
+  commandId: string,
+  command: Omit<Command, 'id'>,
+  categoryId: string,
+) {
+  const target = categories.value.find((item) => item.id === categoryId);
+  if (!target) throw new Error('Category not found');
+  const source = categories.value.find((category) =>
+    category.commands.some((item) => item.id === commandId),
+  );
+  if (!source) throw new Error('Command not found');
+  const updated: Command = { ...command, id: commandId };
+  categories.value = categories.value.map((category) => {
+    const kept = category.commands.filter((item) => item.id !== commandId);
+    if (category.id !== categoryId) return { ...category, commands: kept };
+    const index = category.commands.findIndex((item) => item.id === commandId);
+    if (index === -1) return { ...category, commands: [...kept, updated] };
+    kept.splice(index, 0, updated);
+    return { ...category, commands: kept };
+  });
+  await saveCategories();
+  return updated;
+}
+
 export async function deleteCategory(categoryId: string) {
   categories.value = categories.value.filter((category) => category.id !== categoryId);
   await saveCategories();

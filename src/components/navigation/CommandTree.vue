@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { FolderPlus, Pencil } from 'lucide-vue-next';
 import { db } from 'src/data-layer/database';
-import type { CommandTreeCategory, DeleteTarget } from 'src/types/commands';
+import type { CommandTreeCategory, DeleteTarget, EditTarget } from 'src/types/commands';
 import Input from 'src/components/ui/Input.vue';
 import CommandTreeCategoryNode from 'src/components/navigation/CommandTreeCategory.vue';
 
@@ -12,9 +12,9 @@ const emit = defineEmits<{
   close: [];
   createCategory: [];
   remove: [DeleteTarget];
+  edit: [EditTarget];
 }>();
 const query = defineModel<string>({ default: '' });
-// Deliberately not persisted: leaving delete buttons armed across sessions invites accidents.
 const editMode = ref(false);
 const expanded = ref<Set<string>>(new Set());
 const tree = ref<HTMLElement>();
@@ -24,7 +24,6 @@ const visibleExpanded = computed(() => {
   if (!query.value.trim()) return expanded.value;
   return new Set(filtered.value.map((category) => category.categoryId));
 });
-/** Rows in the order they are focusable, so keyboard navigation is a walk over one array. */
 const visibleRows = computed(() =>
   filtered.value.flatMap((category) => [
     { id: category.categoryId, categoryId: category.categoryId, commandId: undefined },
@@ -48,10 +47,6 @@ async function loadExpanded(): Promise<Set<string>> {
 async function saveExpanded(): Promise<void> {
   await db.settings.put({ key: 'command-catalog:tree-expanded', value: [...expanded.value] });
 }
-/**
- * Expanded ids are persisted per device, so an import leaves ids of categories that no longer
- * exist. Dropping them keeps the saved state in step with the catalog actually on screen.
- */
 function pruneExpanded() {
   if (!props.categories.length) return;
   const existing = new Set(props.categories.map((category) => category.categoryId));
@@ -104,7 +99,6 @@ watch(
   },
   { immediate: true },
 );
-// The catalog can be swapped wholesale by an import, not just grown by an edit.
 watch(() => props.categories, pruneExpanded);
 onMounted(async () => {
   expanded.value = await loadExpanded();
@@ -194,6 +188,7 @@ function onKeydown(event: KeyboardEvent) {
         @toggle="toggle"
         @select="select"
         @remove="emit('remove', $event)"
+        @edit="emit('edit', $event)"
       />
       <p v-if="query.trim() && !filtered.length" class="px-3 py-3 text-sm text-indigo-200">
         No commands found.

@@ -9,7 +9,8 @@ import ExportDialog from 'src/components/catalog/ExportDialog.vue';
 import ImportDialog from 'src/components/catalog/ImportDialog.vue';
 import CommandTree from 'src/components/navigation/CommandTree.vue';
 import DeleteDialog from 'src/components/catalog/DeleteDialog.vue';
-import type { DeleteTarget } from 'src/types/commands';
+import type { Command } from 'src/types/catalog';
+import type { DeleteTarget, EditTarget } from 'src/types/commands';
 import {
   addCategory,
   addCommand,
@@ -20,7 +21,9 @@ import {
   commandRoutes,
   commandTree,
   initializeCatalog,
+  renameCategory,
   replaceCatalog,
+  updateCommand,
 } from 'src/catalog';
 
 const route = useRoute();
@@ -52,6 +55,23 @@ function remove(target: DeleteTarget) {
   if (target.type === 'category') deleteCategory(target.categoryId);
   else deleteCommand(target.commandId);
 }
+async function saveCommand(commandId: string, categoryId: string, command: Omit<Command, 'id'>) {
+  await updateCommand(commandId, command, categoryId);
+  if (route.params.commandId === commandId && route.params.categoryId !== categoryId)
+    router.replace(`/${categoryId}/${commandId}`);
+}
+function edit(target: EditTarget) {
+  if (target.type === 'category') {
+    const category = categories.value.find((item) => item.id === target.categoryId);
+    if (category) categoryEditor.value?.openEdit(category);
+    return;
+  }
+  const owner = categories.value.find((item) =>
+    item.commands.some((command) => command.id === target.commandId),
+  );
+  const command = owner?.commands.find((item) => item.id === target.commandId);
+  if (owner && command) catalogEditor.value?.openCommandEdit(command, owner.id);
+}
 onMounted(() => {
   initializeCatalog();
 });
@@ -80,6 +100,7 @@ onMounted(() => {
           @select="select"
           @create-category="categoryEditor?.open()"
           @remove="deleteDialog?.open($event)"
+          @edit="edit"
         />
         <CatalogTransfer @open-export="exportDialog?.open()" @open-import="importDialog?.open()" />
       </div>
@@ -121,6 +142,7 @@ onMounted(() => {
           @close="drawerOpen = false"
           @create-category="categoryEditor?.open()"
           @remove="deleteDialog?.open($event)"
+          @edit="edit"
         />
         <CatalogTransfer @open-export="exportDialog?.open()" @open-import="importDialog?.open()" />
       </div>
@@ -145,8 +167,9 @@ onMounted(() => {
       :show-floating-button="isCommandRoute"
       :categories="categories"
       @create-command="addCommand"
+      @update-command="saveCommand"
     />
-    <CategoryEditor ref="categoryEditor" @create="addCategory" />
+    <CategoryEditor ref="categoryEditor" @create="addCategory" @update="renameCategory" />
     <ExportDialog ref="exportDialog" :categories="categories" />
     <ImportDialog ref="importDialog" :categories="categories" @replace="replaceCatalog" />
     <DeleteDialog ref="deleteDialog" :categories="categories" @confirm="remove" />

@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Terminal, X } from 'lucide-vue-next';
-import type { CommandTreeCategory, DeleteTarget } from 'src/types/commands';
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  Pencil,
+  Terminal,
+  X,
+} from 'lucide-vue-next';
+import type { CommandTreeCategory, DeleteTarget, EditTarget } from 'src/types/commands';
 
 defineProps<{
   category: CommandTreeCategory;
@@ -8,7 +16,12 @@ defineProps<{
   activeCommandId?: string;
   editMode?: boolean;
 }>();
-const emit = defineEmits<{ toggle: [id: string]; select: [id: string]; remove: [DeleteTarget] }>();
+const emit = defineEmits<{
+  toggle: [id: string];
+  select: [id: string];
+  remove: [DeleteTarget];
+  edit: [EditTarget];
+}>();
 </script>
 
 <template>
@@ -41,15 +54,24 @@ const emit = defineEmits<{ toggle: [id: string]; select: [id: string]; remove: [
         {{ category.commands.length }}
       </span>
 
-      <button
-        v-if="editMode"
-        type="button"
-        class="ml-auto shrink-0 rounded p-1 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
-        :aria-label="`Delete category ${category.title}`"
-        @click.stop="emit('remove', { type: 'category', categoryId: category.categoryId })"
-      >
-        <X :size="15" />
-      </button>
+      <span v-if="editMode" class="ml-auto flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          class="rounded p-1 text-slate-400 transition hover:bg-sky-500/15 hover:text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
+          :aria-label="`Edit category ${category.title}`"
+          @click.stop="emit('edit', { type: 'category', categoryId: category.categoryId })"
+        >
+          <Pencil :size="14" />
+        </button>
+        <button
+          type="button"
+          class="rounded p-1 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          :aria-label="`Delete category ${category.title}`"
+          @click.stop="emit('remove', { type: 'category', categoryId: category.categoryId })"
+        >
+          <X :size="15" />
+        </button>
+      </span>
     </div>
 
     <div
@@ -84,15 +106,24 @@ const emit = defineEmits<{ toggle: [id: string]; select: [id: string]; remove: [
           ]"
         />
         <span class="truncate">{{ command.title }}</span>
-        <button
-          v-if="editMode"
-          type="button"
-          class="ml-auto shrink-0 rounded p-1 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
-          :aria-label="`Delete command ${command.title}`"
-          @click.stop="emit('remove', { type: 'command', commandId: command.commandId })"
-        >
-          <X :size="15" />
-        </button>
+        <span v-if="editMode" class="ml-auto flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            class="rounded p-1 text-slate-400 transition hover:bg-sky-500/15 hover:text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            :aria-label="`Edit command ${command.title}`"
+            @click.stop="emit('edit', { type: 'command', commandId: command.commandId })"
+          >
+            <Pencil :size="14" />
+          </button>
+          <button
+            type="button"
+            class="rounded p-1 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
+            :aria-label="`Delete command ${command.title}`"
+            @click.stop="emit('remove', { type: 'command', commandId: command.commandId })"
+          >
+            <X :size="15" />
+          </button>
+        </span>
       </div>
     </div>
   </div>

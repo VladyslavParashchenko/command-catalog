@@ -22,7 +22,8 @@ vi.mock('src/data-layer/database', () => {
   };
 });
 
-const { categories, commandTree, replaceCatalog } = await import('src/catalog');
+const { categories, commandTree, renameCategory, replaceCatalog, updateCommand } =
+  await import('src/catalog');
 
 const imported = [
   {
@@ -61,5 +62,74 @@ describe('replaceCatalog', () => {
         ],
       }),
     ]);
+  });
+});
+
+const build = {
+  name: 'Build image',
+  description: '',
+  template: 'docker build {{path}}',
+  options: { path: { type: 'string' as const, optional: false } },
+};
+const run = {
+  name: 'Run container',
+  description: '',
+  template: 'docker run {{image}}',
+  options: { image: { type: 'string' as const, optional: false } },
+};
+
+describe('renameCategory', () => {
+  beforeEach(() => {
+    categories.value = [
+      { id: 'docker', name: 'Docker', commands: [{ id: 'build-image', ...build }] },
+    ];
+  });
+
+  it('renames without touching the id every command URL is built from', async () => {
+    await renameCategory('docker', '  Containers  ');
+    expect(categories.value[0]).toMatchObject({ id: 'docker', name: 'Containers' });
+    expect(commandTree.value[0]?.commands[0]?.path).toBe('/docker/build-image');
+  });
+});
+
+describe('updateCommand', () => {
+  beforeEach(() => {
+    categories.value = [
+      {
+        id: 'docker',
+        name: 'Docker',
+        commands: [
+          { id: 'build-image', ...build },
+          { id: 'run-container', ...run },
+        ],
+      },
+      { id: 'linux', name: 'Linux', commands: [] },
+    ];
+  });
+
+  it('keeps the id and the position in its category', async () => {
+    await updateCommand('build-image', { ...build, name: 'Build' }, 'docker');
+    expect(categories.value[0]?.commands.map((command) => command.id)).toEqual([
+      'build-image',
+      'run-container',
+    ]);
+    expect(categories.value[0]?.commands[0]).toMatchObject({ id: 'build-image', name: 'Build' });
+  });
+
+  it('moves the command when the category changes', async () => {
+    await updateCommand('build-image', build, 'linux');
+    expect(categories.value[0]?.commands.map((command) => command.id)).toEqual(['run-container']);
+    expect(commandTree.value[1]?.commands[0]?.path).toBe('/linux/build-image');
+  });
+
+  it('rejects an unknown category', async () => {
+    await expect(updateCommand('build-image', build, 'missing')).rejects.toThrow(
+      'Category not found',
+    );
+  });
+
+  it('rejects an unknown command without adding it to the target category', async () => {
+    await expect(updateCommand('missing', build, 'linux')).rejects.toThrow('Command not found');
+    expect(categories.value[1]?.commands).toEqual([]);
   });
 });

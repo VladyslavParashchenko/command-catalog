@@ -1,19 +1,32 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
-import { FolderPlus } from 'lucide-vue-next';
+import { computed, nextTick, ref } from 'vue';
+import { FolderPen, FolderPlus } from 'lucide-vue-next';
+import type { Category } from 'src/types/catalog';
 import Modal from 'src/components/ui/Modal.vue';
 
-const emit = defineEmits<{ create: [name: string] }>();
+const emit = defineEmits<{ create: [name: string]; update: [categoryId: string, name: string] }>();
 
 const isOpen = ref(false);
+const editedId = ref('');
 const name = ref('');
 const error = ref('');
 const field = ref<HTMLInputElement | null>(null);
+const isEditing = computed(() => Boolean(editedId.value));
 
-function open() {
+function show() {
   error.value = '';
   isOpen.value = true;
   nextTick(() => field.value?.focus());
+}
+function open() {
+  editedId.value = '';
+  name.value = '';
+  show();
+}
+function openEdit(category: Category) {
+  editedId.value = category.id;
+  name.value = category.name;
+  show();
 }
 function close() {
   isOpen.value = false;
@@ -24,23 +37,27 @@ function submit() {
     error.value = 'Enter a category name.';
     return;
   }
-  emit('create', name.value.trim());
+  if (editedId.value) emit('update', editedId.value, name.value.trim());
+  else emit('create', name.value.trim());
   name.value = '';
+  editedId.value = '';
   close();
 }
 
-defineExpose({ open });
+defineExpose({ open, openEdit });
 </script>
 
 <template>
   <Modal
     :open="isOpen"
-    label="New category"
-    title="New category"
+    :label="isEditing ? 'Edit category' : 'New category'"
+    :title="isEditing ? 'Edit category' : 'New category'"
     description="Changes are saved on this device."
     @close="close"
   >
-    <template #icon><FolderPlus :size="20" /></template>
+    <template #icon>
+      <component :is="isEditing ? FolderPen : FolderPlus" :size="20" />
+    </template>
 
     <form id="category-form" class="grid gap-5 px-6 py-5" @submit.prevent="submit">
       <label class="grid gap-2">
@@ -61,7 +78,8 @@ defineExpose({ open });
         form="category-form"
         class="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-5 text-base font-semibold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-200"
       >
-        <FolderPlus :size="18" /> Create category
+        <component :is="isEditing ? FolderPen : FolderPlus" :size="18" />
+        {{ isEditing ? 'Save category' : 'Create category' }}
       </button>
     </template>
   </Modal>
