@@ -2,6 +2,7 @@
   <img src="public/favicon.svg" width="96" height="96" alt="Command Catalog logo" />
   <h1>Command Catalog</h1>
   <p>Visual shell command builder and CLI utility catalog.</p>
+  <p><a href="https://command-catalog.surge.sh/">Try Command Catalog online</a></p>
 </div>
 
 ---
