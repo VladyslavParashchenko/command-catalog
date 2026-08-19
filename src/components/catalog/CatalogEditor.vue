@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import { FileDown, Pencil, Plus, Save, Settings2 } from 'lucide-vue-next';
-import type { Category, Command, TemplateOption } from 'src/types/catalog';
+import type { Category, Command, EnumChoice, TemplateOption } from 'src/types/catalog';
 import { parseCommandJson, validateCommandInput } from 'src/lib/command-import';
 import { optionTypes } from 'src/schemes/command';
 import skillMarkdown from 'src/assets/command-skill.md?raw';
@@ -17,6 +17,7 @@ type ParameterDraft = {
   optional: boolean;
   defaultValue?: TemplateOption['defaultValue'];
   restrictions?: TemplateOption['restrictions'];
+  enumValues: EnumChoice[];
 };
 
 const props = withDefaults(
@@ -45,7 +46,7 @@ const hasCategories = computed(() => props.categories.length > 0);
 const isEditing = computed(() => Boolean(editedId.value));
 
 function createParameter(): ParameterDraft {
-  return { name: '', key: '', example: '', type: 'string', optional: false };
+  return { name: '', key: '', example: '', type: 'string', optional: false, enumValues: [] };
 }
 function resetDraft() {
   Object.assign(command, { name: '', description: '', template: '' });
@@ -77,6 +78,7 @@ function openCommandEdit(existing: Command, categoryId: string) {
     optional: option.optional,
     defaultValue: option.defaultValue,
     restrictions: option.restrictions,
+    enumValues: option.type === 'enum' ? (option.restrictions?.enum ?? []) : [],
   }));
   json.value = '';
   isOpen.value = true;
@@ -95,6 +97,21 @@ async function submitCommand() {
     error.value = 'Parameter names must be unique.';
     return;
   }
+  for (const parameter of parameters.value) {
+    if (parameter.type !== 'enum') continue;
+    const choices = parameter.enumValues.map(({ key, label }) => ({
+      key: key.trim(),
+      label: label.trim(),
+    }));
+    if (choices.some(({ key, label }) => !key || !label)) {
+      error.value = 'Enum choices must have both a key and a label.';
+      return;
+    }
+    if (new Set(choices.map(({ key }) => key)).size !== choices.length) {
+      error.value = 'Enum choice keys must be unique.';
+      return;
+    }
+  }
   const options = Object.fromEntries(
     parameters.value
       .filter((item) => item.name.trim())
@@ -106,7 +123,15 @@ async function submitCommand() {
           type: item.type,
           optional: item.optional,
           defaultValue: item.defaultValue,
-          restrictions: item.restrictions ?? {},
+          restrictions:
+            item.type === 'enum'
+              ? {
+                  enum: item.enumValues.map(({ key, label }) => ({
+                    key: key.trim(),
+                    label: label.trim(),
+                  })),
+                }
+              : (item.restrictions ?? {}),
         },
       ]),
   );
@@ -162,6 +187,12 @@ async function submitJson() {
 function selectTab(next: 'form' | 'json') {
   tab.value = next;
   error.value = '';
+}
+function addEnumChoice(index: number) {
+  parameters.value[index].enumValues.push({ key: '', label: '' });
+}
+function removeEnumChoice(parameterIndex: number, choiceIndex: number) {
+  parameters.value[parameterIndex].enumValues.splice(choiceIndex, 1);
 }
 function downloadSkill() {
   const url = URL.createObjectURL(new Blob([skillMarkdown], { type: 'text/markdown' }));
@@ -264,10 +295,21 @@ defineExpose({ openCommand, openCommandEdit });
           placeholder='{
   "name": "Build image",
   "description": "Build a Docker image from a Dockerfile.",
-  "template": "docker build -t {{image}} {{path}}",
+  "template": "docker build -t {{image}} {{format}} {{path}}",
   "options": {
     "image": { "type": "string", "optional": false, "example": "my-app:latest" },
-    "path": { "type": "string", "optional": false, "example": "." }
+    "path": { "type": "string", "optional": false, "example": "." },
+    "format": {
+      "key": "-f",
+      "type": "enum",
+      "optional": true,
+      "restrictions": {
+        "enum": [
+          { "key": "best", "label": "Best quality" },
+          { "key": "worst", "label": "Lowest quality" }
+        ]
+      }
+    }
   }
 }'
           class="resize-y rounded-xl border border-slate-300 px-3.5 py-3 font-mono text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
@@ -376,6 +418,48 @@ defineExpose({ openCommand, openCommandEdit });
                 class="h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-base outline-none focus:border-sky-500"
               />
             </label>
+            <div v-if="parameter.type === 'enum'" class="grid gap-2 sm:col-span-2 lg:col-span-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600"
+                  >Enum choices</span
+                >
+                <button
+                  type="button"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  @click="addEnumChoice(index)"
+                >
+                  Add choice
+                </button>
+              </div>
+              <p v-if="!parameter.enumValues.length" class="text-sm text-slate-500">
+                Add at least one key and label.
+              </p>
+              <div
+                v-for="(choice, choiceIndex) in parameter.enumValues"
+                :key="choiceIndex"
+                class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+              >
+                <input
+                  v-model="choice.key"
+                  placeholder="best"
+                  aria-label="Enum key"
+                  class="h-10 min-w-0 rounded-lg border border-slate-300 px-3 font-mono text-base outline-none focus:border-sky-500"
+                />
+                <input
+                  v-model="choice.label"
+                  placeholder="Best quality"
+                  aria-label="Enum label"
+                  class="h-10 min-w-0 rounded-lg border border-slate-300 px-3 text-base outline-none focus:border-sky-500"
+                />
+                <button
+                  type="button"
+                  class="h-10 rounded-lg px-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                  @click="removeEnumChoice(index, choiceIndex)"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
             <button
               type="button"
               class="h-11 justify-self-start rounded-lg px-3 text-base font-semibold text-rose-600 hover:bg-rose-50"

@@ -1,3 +1,8 @@
+export type EnumChoice = {
+  key: string;
+  label: string;
+};
+
 export type TemplateOption = {
   key?: string;
   example?: string;
@@ -7,7 +12,7 @@ export type TemplateOption = {
   restrictions?: {
     min?: number;
     max?: number;
-    enum?: string[];
+    enum?: EnumChoice[];
   };
 };
 

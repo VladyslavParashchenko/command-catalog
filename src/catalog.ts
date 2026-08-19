@@ -3,6 +3,7 @@ import type { Category, Command } from 'src/types/catalog';
 import { db } from 'src/data-layer/database';
 import type { CategoryRecord, CommandRecord } from 'src/data-layer/types';
 import type { CommandTreeCategory } from 'src/types/commands';
+import { normalizeEnumChoices } from 'src/schemes/command';
 
 export const categories = ref<Category[]>([]);
 export const catalogReady = ref(false);
@@ -191,13 +192,31 @@ function buildCatalog(
         name: record.name,
         description: record.description,
         template: record.template,
-        options: record.options,
+        options: normalizeOptions(record.options),
       });
       commandsByCategory.set(record.categoryId, commands);
     });
   return categoryRecords
     .sort((a, b) => a.order - b.order)
     .map(({ id, name }) => ({ id, name, commands: commandsByCategory.get(id) ?? [] }));
+}
+
+function normalizeOptions(options: Command['options']): Command['options'] {
+  return Object.fromEntries(
+    Object.entries(options).map(([name, option]) => {
+      if (option.type !== 'enum' || !option.restrictions?.enum) return [name, option];
+      return [
+        name,
+        {
+          ...option,
+          restrictions: {
+            ...option.restrictions,
+            enum: normalizeEnumChoices(option.restrictions.enum, `Parameter "${name}"`),
+          },
+        },
+      ];
+    }),
+  );
 }
 function uniqueId(name: string, fallback: string) {
   const base =

@@ -23,6 +23,81 @@ describe('parseCommandJson', () => {
     expect(result).toEqual({ ok: true, command: valid });
   });
 
+  it('accepts enum choices with separate keys and labels', () => {
+    const command = {
+      ...valid,
+      template: 'yt-dlp -f {{format}}',
+      options: {
+        format: {
+          type: 'enum',
+          optional: false,
+          restrictions: {
+            enum: [
+              { key: 'bestvideo+bestaudio', label: 'Best video and audio' },
+              { key: 'worst', label: 'Lowest quality' },
+            ],
+          },
+        },
+      },
+    };
+    const result = parseCommandJson(JSON.stringify(command));
+    expect(result.ok && result.command.options.format.restrictions?.enum).toEqual(
+      command.options.format.restrictions.enum,
+    );
+  });
+
+  it('normalizes legacy enum strings to key and label pairs', () => {
+    const command = {
+      ...valid,
+      template: 'tool --level {{level}}',
+      options: {
+        level: { type: 'enum', optional: false, restrictions: { enum: ['debug', 'info'] } },
+      },
+    };
+    const result = parseCommandJson(JSON.stringify(command));
+    expect(result.ok && result.command.options.level.restrictions?.enum).toEqual([
+      { key: 'debug', label: 'debug' },
+      { key: 'info', label: 'info' },
+    ]);
+  });
+
+  it('rejects enum choices with duplicate keys', () => {
+    const command = {
+      ...valid,
+      template: 'tool --level {{level}}',
+      options: {
+        level: {
+          type: 'enum',
+          optional: false,
+          restrictions: {
+            enum: [
+              { key: 'debug', label: 'Debug logging' },
+              { key: 'debug', label: 'Duplicate key' },
+            ],
+          },
+        },
+      },
+    };
+    expect(errorOf(command)).toBe('Parameter "level" of the command has duplicate enum keys.');
+  });
+
+  it('rejects enum choices with an empty key or label', () => {
+    const command = {
+      ...valid,
+      template: 'tool --level {{level}}',
+      options: {
+        level: {
+          type: 'enum',
+          optional: false,
+          restrictions: { enum: [{ key: '', label: 'Debug logging' }] },
+        },
+      },
+    };
+    expect(errorOf(command)).toBe(
+      'Parameter "level" of the command has an enum choice with an empty key or label.',
+    );
+  });
+
   it('defaults a missing description to an empty string', () => {
     const result = parseCommandJson(
       JSON.stringify({ name: valid.name, template: valid.template, options: valid.options }),

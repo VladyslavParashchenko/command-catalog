@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Command, TemplateOption } from 'src/types/catalog';
+import type { Command, EnumChoice, TemplateOption } from 'src/types/catalog';
 import { fail, run } from 'src/schemes/parse';
 
 export type CommandLabels = {
@@ -69,7 +69,7 @@ export function checkTemplateContract(command: Omit<Command, 'id'>) {
 }
 
 function parseOption(raw: unknown, label: string): TemplateOption {
-  return run(
+  const option = run(
     z.object(
       {
         type: z.enum(optionTypes as [TemplateOption['type'], ...TemplateOption['type'][]], {
@@ -89,18 +89,63 @@ function parseOption(raw: unknown, label: string): TemplateOption {
     ),
     raw,
   );
+
+  const enumValues = option.restrictions?.enum;
+  if (!enumValues) return option as TemplateOption;
+
+  return {
+    ...option,
+    restrictions: {
+      ...option.restrictions,
+      enum: normalizeEnumChoices(enumValues, label),
+    },
+  } as TemplateOption;
 }
 
 function restrictionsSchema(label: string) {
-  const enumMessage = `${label} has an "enum" restriction that is not a list of strings.`;
+  const enumMessage = `${label} has an invalid "enum" restriction.`;
   return z.object(
     {
       min: z.number({ error: `${label} has a non-numeric "min" restriction.` }).optional(),
       max: z.number({ error: `${label} has a non-numeric "max" restriction.` }).optional(),
-      enum: z.array(z.string({ error: enumMessage }), { error: enumMessage }).optional(),
+      enum: z
+        .union([
+          z.array(z.string({ error: enumMessage }), { error: enumMessage }),
+          z.array(
+            z.object(
+              {
+                key: z.string({ error: enumMessage }),
+                label: z.string({ error: enumMessage }),
+              },
+              { error: enumMessage },
+            ),
+            { error: enumMessage },
+          ),
+        ])
+        .optional(),
     },
     { error: `${label} has non-object "restrictions".` },
   );
+}
+
+export function normalizeEnumChoices(value: unknown, label = 'Enum'): EnumChoice[] {
+  if (!Array.isArray(value)) fail(`${label} has an invalid "enum" restriction.`);
+
+  const normalized = value.map((item) => {
+    if (typeof item === 'string') return { key: item.trim(), label: item.trim() };
+    if (!item || typeof item !== 'object') fail(`${label} has an invalid "enum" restriction.`);
+    const choice = item as { key?: unknown; label?: unknown };
+    if (typeof choice.key !== 'string' || typeof choice.label !== 'string')
+      fail(`${label} has an invalid "enum" restriction.`);
+    return { key: choice.key.trim(), label: choice.label.trim() };
+  });
+  if (normalized.some(({ key, label: choiceLabel }) => !key || !choiceLabel)) {
+    fail(`${label} has an enum choice with an empty key or label.`);
+  }
+  if (new Set(normalized.map(({ key }) => key)).size !== normalized.length) {
+    fail(`${label} has duplicate enum keys.`);
+  }
+  return normalized;
 }
 
 function list(names: string[]) {

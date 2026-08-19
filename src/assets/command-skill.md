@@ -92,14 +92,23 @@ and nothing else. `defaultValue` may be `true` or `false`.
 { "recursive": { "key": "-r", "type": "boolean", "optional": true, "defaultValue": true } }
 ```
 
-**`enum`** — a fixed set of choices. `restrictions.enum` must be a list of strings.
+**`enum`** — a fixed set of choices with a machine value and a human-readable label. Use an array
+of objects with `key` and `label`. The `key` is inserted into the rendered shell command; the
+`label` is shown in the app's select control. Older catalogs may use a string array, where the
+same string is used as both key and label, but new JSON should use the object format.
 
 ```json
 {
   "level": {
     "type": "enum",
     "optional": true,
-    "restrictions": { "enum": ["debug", "info", "warn"] }
+    "restrictions": {
+      "enum": [
+        { "key": "debug", "label": "Debug logging" },
+        { "key": "info", "label": "Informational logging" },
+        { "key": "warn", "label": "Warnings only" }
+      ]
+    }
   }
 }
 ```
@@ -130,7 +139,13 @@ almost always optional; the main subject of the command usually is not.
       "key": "-f",
       "type": "enum",
       "optional": true,
-      "restrictions": { "enum": ["best", "bestvideo+bestaudio", "worst"] }
+      "restrictions": {
+        "enum": [
+          { "key": "best", "label": "Best quality" },
+          { "key": "bestvideo+bestaudio", "label": "Best video and audio" },
+          { "key": "worst", "label": "Lowest quality" }
+        ]
+      }
     },
     "destination": { "key": "-P", "type": "string", "optional": true, "example": "~/Videos" },
     "url": {
@@ -149,4 +164,4 @@ almost always optional; the main subject of the command usually is not.
 3. `name` and `template` are non-empty.
 4. Placeholders and `options` keys match both ways, with no spaces inside `{{ }}`.
 5. Every option has a valid `type` and a boolean `optional`.
-6. `restrictions.enum` is a list of strings; `min` and `max` are numbers.
+6. `restrictions.enum` is a list of unique `{ "key": string, "label": string }` objects; `min` and `max` are numbers.
