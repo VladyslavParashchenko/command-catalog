@@ -92,7 +92,7 @@ onMounted(async () => {
           <p class="text-base text-slate-400">Shell utilities</p>
         </div>
       </div>
-      <div class="flex min-h-0 flex-1 flex-col p-4">
+      <div class="flex min-h-0 flex-1 flex-col p-4 pb-1">
         <CommandTree
           v-model="query"
           :categories="commandTree"
@@ -166,8 +166,8 @@ onMounted(async () => {
       ref="catalogEditor"
       :show-floating-button="isCommandRoute"
       :categories="categories"
-      :on-create-command="addCommand"
-      :on-update-command="saveCommand"
+      @create-command="addCommand"
+      @update-command="saveCommand"
     />
     <CategoryEditor ref="categoryEditor" @create="addCategory" @update="renameCategory" />
     <ExportDialog ref="exportDialog" :categories="categories" />
