@@ -1,0 +1,37 @@
+{
+  "releases": [
+    {
+      "version": "1.1.0",
+      "date": "2026-08-19",
+      "sections": [
+        {
+          "title": "Command editor",
+          "items": [
+            "Edit existing commands directly through JSON.",
+            "Switch between the manual editor and JSON editor without losing the current command."
+          ]
+        },
+        {
+          "title": "Enum values",
+          "items": [
+            "Use separate machine keys and readable labels for enum choices.",
+            "Legacy string-list enums remain compatible and are normalized automatically."
+          ]
+        }
+      ]
+    },
+    {
+      "version": "1.0.3",
+      "date": "2026-08-19",
+      "sections": [
+        {
+          "title": "Reliability and readability",
+          "items": [
+            "Improved command persistence across page reloads.",
+            "Increased interface font sizes and added the version indicator."
+          ]
+        }
+      ]
+    }
+  ]
+}

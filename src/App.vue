@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import CatalogEditor from 'src/components/catalog/CatalogEditor.vue';
 import CategoryEditor from 'src/components/catalog/CategoryEditor.vue';
 import CatalogTransfer from 'src/components/catalog/CatalogTransfer.vue';
+import ChangelogDialog from 'src/components/catalog/ChangelogDialog.vue';
 import ExportDialog from 'src/components/catalog/ExportDialog.vue';
 import ImportDialog from 'src/components/catalog/ImportDialog.vue';
 import CommandTree from 'src/components/navigation/CommandTree.vue';
@@ -32,6 +33,7 @@ const catalogEditor = ref<InstanceType<typeof CatalogEditor> | null>(null);
 const categoryEditor = ref<InstanceType<typeof CategoryEditor> | null>(null);
 const exportDialog = ref<InstanceType<typeof ExportDialog> | null>(null);
 const importDialog = ref<InstanceType<typeof ImportDialog> | null>(null);
+const changelogDialog = ref<InstanceType<typeof ChangelogDialog> | null>(null);
 const deleteDialog = ref<InstanceType<typeof DeleteDialog> | null>(null);
 const drawerOpen = ref(false);
 const query = ref('');
@@ -102,7 +104,11 @@ onMounted(async () => {
           @remove="deleteDialog?.open($event)"
           @edit="edit"
         />
-        <CatalogTransfer @open-export="exportDialog?.open()" @open-import="importDialog?.open()" />
+        <CatalogTransfer
+          @open-export="exportDialog?.open()"
+          @open-import="importDialog?.open()"
+          @open-changelog="changelogDialog?.show()"
+        />
       </div>
     </aside>
     <div
@@ -144,7 +150,11 @@ onMounted(async () => {
           @remove="deleteDialog?.open($event)"
           @edit="edit"
         />
-        <CatalogTransfer @open-export="exportDialog?.open()" @open-import="importDialog?.open()" />
+        <CatalogTransfer
+          @open-export="exportDialog?.open()"
+          @open-import="importDialog?.open()"
+          @open-changelog="changelogDialog?.show()"
+        />
       </div>
     </aside>
     <main class="min-h-screen bg-slate-50 md:ml-96">
@@ -172,6 +182,7 @@ onMounted(async () => {
     <CategoryEditor ref="categoryEditor" @create="addCategory" @update="renameCategory" />
     <ExportDialog ref="exportDialog" :categories="categories" />
     <ImportDialog ref="importDialog" :categories="categories" @replace="replaceCatalog" />
+    <ChangelogDialog ref="changelogDialog" />
     <DeleteDialog ref="deleteDialog" :categories="categories" @confirm="remove" />
   </div>
 </template>

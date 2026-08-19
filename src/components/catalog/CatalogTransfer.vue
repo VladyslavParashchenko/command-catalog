@@ -2,7 +2,7 @@
 import { Download, Upload } from 'lucide-vue-next';
 import packageJson from '../../../package.json';
 
-const emit = defineEmits<{ openExport: []; openImport: [] }>();
+const emit = defineEmits<{ openExport: []; openImport: []; openChangelog: [] }>();
 const version = packageJson.version;
 </script>
 
@@ -24,6 +24,12 @@ const version = packageJson.version;
         <Upload :size="15" /> Import
       </button>
     </div>
-    <p class="mt-1 text-center text-[11px] leading-4 text-slate-500">v{{ version }}</p>
+    <button
+      type="button"
+      class="mx-auto mt-1 block text-[11px] leading-4 text-slate-500 underline decoration-slate-600/50 underline-offset-2 transition hover:text-slate-300"
+      @click="emit('openChangelog')"
+    >
+      v{{ version }}
+    </button>
   </div>
 </template>
