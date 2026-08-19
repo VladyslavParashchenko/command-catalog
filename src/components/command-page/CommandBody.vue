@@ -4,6 +4,7 @@ import type { Command } from 'src/types/catalog';
 import type { PresetState } from 'src/types/presets';
 import CommandParameterField from 'src/components/command-page/CommandParameterField.vue';
 import CommandPreview from 'src/components/command-page/CommandPreview.vue';
+import { outputFileName } from 'src/lib/output-file';
 
 type CommandBodyProps = {
   command: Command;
@@ -22,11 +23,19 @@ const enabled = reactive<Record<string, boolean>>(
   Object.fromEntries(Object.keys(props.command.options).map((name) => [name, true])),
 );
 const copied = reactive({ value: false });
+function optionValue(name: string): string | number | boolean {
+  const option = props.command.options[name];
+  if (option?.optional && !enabled[name]) return '';
+  if (option?.type === 'output-file' && option.source) {
+    return outputFileName(String(optionValue(option.source)), option.suffix ?? 'output');
+  }
+  return values[name] ?? '';
+}
 const renderedTemplate = computed(() => {
   const rendered = props.command.template.replace(/\{\{(\w+)\}\}/g, (_, name: string) => {
     const option = props.command.options[name];
     if (option?.optional && !enabled[name]) return '';
-    const value = values[name];
+    const value = optionValue(name);
     const empty = value === undefined || value === null || value === '';
     if (option?.type === 'boolean') return value === true ? (option.key ?? '') : '';
     const renderedValue = empty ? `{{${name}}}` : String(value);
@@ -71,7 +80,7 @@ defineExpose({ getState, setState });
           :key="name"
           :name="name"
           :option="option"
-          :model-value="values[name]"
+          :model-value="optionValue(name)"
           :enabled="enabled[name]"
           @update:model-value="values[name] = $event"
           @toggle="toggleOption(name)"

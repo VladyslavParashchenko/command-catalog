@@ -183,4 +183,28 @@ describe('parseCommandJson', () => {
     const result = parseCommandJson(JSON.stringify(fixed));
     expect(result.ok && result.command.template).toBe('kubectl get pods');
   });
+
+  it('accepts an output-file parameter referencing another parameter', () => {
+    const command = {
+      ...valid,
+      template: 'convert {{input}} {{output}}',
+      options: {
+        input: valid.options.path,
+        output: { type: 'output-file', source: 'input', suffix: 'converted', optional: false },
+      },
+    };
+    expect(parseCommandJson(JSON.stringify(command)).ok).toBe(true);
+  });
+
+  it('rejects an output-file parameter with a missing source', () => {
+    const command = {
+      ...valid,
+      template: 'convert {{input}}',
+      options: {
+        input: valid.options.path,
+        output: { type: 'output-file', source: 'missing', suffix: 'converted', optional: false },
+      },
+    };
+    expect(errorOf(command)).toContain('references missing source "missing"');
+  });
 });

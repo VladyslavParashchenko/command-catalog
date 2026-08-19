@@ -13,6 +13,7 @@ export const optionTypes: TemplateOption['type'][] = [
   'boolean',
   'enum',
   'timecode',
+  'output-file',
 ];
 
 // Must stay in step with the renderer in CommandBody.vue, which accepts no spaces inside braces.
@@ -38,16 +39,33 @@ export function parseCommandBody(raw: unknown, labels: CommandLabels): Omit<Comm
     raw,
   );
 
+  const options = Object.fromEntries(
+    Object.entries(body.options).map(([name, option]) => [
+      name,
+      parseOption(option, `Parameter "${name}" of ${owner}`),
+    ]),
+  );
+  for (const [name, option] of Object.entries(options)) {
+    if (option.type !== 'output-file') continue;
+    if (!options[option.source!])
+      fail(`Parameter "${name}" of ${owner} references missing source "${option.source}".`);
+    if (option.source === name) fail(`Parameter "${name}" of ${owner} cannot reference itself.`);
+  }
+  for (const name of Object.keys(options)) {
+    const path = new Set<string>();
+    let current: string | undefined = name;
+    while (current && options[current]?.type === 'output-file') {
+      if (path.has(current)) fail(`Parameters of ${owner} contain a cyclic output-file source.`);
+      path.add(current);
+      current = options[current].source;
+    }
+  }
+
   return {
     name: body.name,
     description: body.description ?? '',
     template: body.template,
-    options: Object.fromEntries(
-      Object.entries(body.options).map(([name, option]) => [
-        name,
-        parseOption(option, `Parameter "${name}" of ${owner}`),
-      ]),
-    ),
+    options,
   };
 }
 
@@ -83,12 +101,19 @@ function parseOption(raw: unknown, label: string): TemplateOption {
             error: `${label} has an unsupported "defaultValue".`,
           })
           .optional(),
+        source: z.string({ error: `${label} has a non-string "source".` }).optional(),
+        suffix: z.string({ error: `${label} has a non-string "suffix".` }).optional(),
         restrictions: restrictionsSchema(label).optional(),
       },
       { error: `${label} must be an object.` },
     ),
     raw,
   );
+
+  if (option.type === 'output-file') {
+    if (!option.source?.trim()) fail(`${label} must have a non-empty "source".`);
+    if (!option.suffix?.trim()) fail(`${label} must have a non-empty "suffix".`);
+  }
 
   const enumValues = option.restrictions?.enum;
   if (!enumValues) return option as TemplateOption;

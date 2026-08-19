@@ -16,6 +16,8 @@ type ParameterDraft = {
   type: OptionType;
   optional: boolean;
   defaultValue?: TemplateOption['defaultValue'];
+  source?: string;
+  suffix?: string;
   restrictions?: TemplateOption['restrictions'];
   enumValues: EnumChoice[];
 };
@@ -88,6 +90,8 @@ function openCommandEdit(existing: Command, categoryId: string) {
     type: option.type,
     optional: option.optional,
     defaultValue: option.defaultValue,
+    source: option.source,
+    suffix: option.suffix,
     restrictions: option.restrictions,
     enumValues: option.type === 'enum' ? (option.restrictions?.enum ?? []) : [],
   }));
@@ -133,6 +137,8 @@ async function submitCommand() {
           type: item.type,
           optional: item.optional,
           defaultValue: item.defaultValue,
+          source: item.type === 'output-file' ? item.source?.trim() || undefined : undefined,
+          suffix: item.type === 'output-file' ? item.suffix?.trim() || undefined : undefined,
           restrictions:
             item.type === 'enum'
               ? {
@@ -433,6 +439,28 @@ defineExpose({ openCommand, openCommandEdit });
                 class="h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-base outline-none focus:border-sky-500"
               />
             </label>
+            <template v-if="parameter.type === 'output-file'">
+              <label class="grid gap-1.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600"
+                  >Source parameter</span
+                >
+                <input
+                  v-model="parameter.source"
+                  placeholder="input"
+                  class="h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-base outline-none focus:border-sky-500"
+                />
+              </label>
+              <label class="grid gap-1.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600"
+                  >Filename suffix</span
+                >
+                <input
+                  v-model="parameter.suffix"
+                  placeholder="converted"
+                  class="h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-base outline-none focus:border-sky-500"
+                />
+              </label>
+            </template>
             <div v-if="parameter.type === 'enum'" class="grid gap-2 sm:col-span-2 lg:col-span-3">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-600"

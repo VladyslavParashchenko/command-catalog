@@ -55,14 +55,14 @@ change belong directly in the template: `ps aux | grep {{port}}`.
 
 ## Option fields
 
-| Field          | Required | Type                      | Notes                                                     |
-| -------------- | -------- | ------------------------- | --------------------------------------------------------- |
-| `type`         | yes      | see below                 | One of `string`, `number`, `boolean`, `enum`, `timecode`. |
-| `optional`     | yes      | boolean                   | `true` means the user may leave it out.                   |
-| `key`          | no       | string                    | Flag emitted before the value, e.g. `-t`, `--output`.     |
-| `example`      | no       | string                    | Placeholder text shown in the input.                      |
-| `defaultValue` | no       | string, number or boolean | Pre-filled value.                                         |
-| `restrictions` | no       | object                    | See each type below.                                      |
+| Field          | Required | Type                      | Notes                                                                    |
+| -------------- | -------- | ------------------------- | ------------------------------------------------------------------------ |
+| `type`         | yes      | see below                 | One of `string`, `number`, `boolean`, `enum`, `timecode`, `output-file`. |
+| `optional`     | yes      | boolean                   | `true` means the user may leave it out.                                  |
+| `key`          | no       | string                    | Flag emitted before the value, e.g. `-t`, `--output`.                    |
+| `example`      | no       | string                    | Placeholder text shown in the input.                                     |
+| `defaultValue` | no       | string, number or boolean | Pre-filled value.                                                        |
+| `restrictions` | no       | object                    | See each type below.                                                     |
 
 ### Types
 
@@ -117,6 +117,21 @@ same string is used as both key and label, but new JSON should use the object fo
 
 ```json
 { "start": { "key": "-ss", "type": "timecode", "optional": true, "example": "00:01:30" } }
+```
+
+**`output-file`** — derives a filename from another parameter and inserts a suffix before its
+extension. The separator is always a dash, so `video.mp4` with suffix `converted` becomes
+`video-converted.mp4`. Compound archive extensions such as `.tar.gz` are preserved.
+
+```json
+{
+  "output": {
+    "type": "output-file",
+    "optional": false,
+    "source": "input",
+    "suffix": "converted"
+  }
+}
 ```
 
 ## When to use `key`

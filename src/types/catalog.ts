@@ -8,7 +8,9 @@ export type TemplateOption = {
   example?: string;
   optional: boolean;
   defaultValue?: string | number | boolean;
-  type: 'string' | 'number' | 'boolean' | 'enum' | 'timecode';
+  type: 'string' | 'number' | 'boolean' | 'enum' | 'timecode' | 'output-file';
+  source?: string;
+  suffix?: string;
   restrictions?: {
     min?: number;
     max?: number;

@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.2.0",
+      "date": "2026-08-19",
+      "sections": [
+        {
+          "title": "Output file parameters",
+          "items": [
+            "Added output-file parameters derived from another command parameter.",
+            "Output filenames preserve regular and compound extensions while adding a dash-separated suffix.",
+            "Added validation for missing, self-referencing, and cyclic output-file sources."
+          ]
+        }
+      ]
+    },
+    {
       "version": "1.1.0",
       "date": "2026-08-19",
       "sections": [
