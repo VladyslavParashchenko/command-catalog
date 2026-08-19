@@ -20,13 +20,18 @@ type ParameterDraft = {
 };
 
 const props = withDefaults(
-  defineProps<{ categories: Category[]; showFloatingButton?: boolean }>(),
+  defineProps<{
+    categories: Category[];
+    showFloatingButton?: boolean;
+    onCreateCommand: (categoryId: string, command: Omit<Command, 'id'>) => Promise<unknown>;
+    onUpdateCommand: (
+      commandId: string,
+      categoryId: string,
+      command: Omit<Command, 'id'>,
+    ) => Promise<unknown>;
+  }>(),
   { showFloatingButton: true },
 );
-const emit = defineEmits<{
-  createCommand: [categoryId: string, command: Omit<Command, 'id'>];
-  updateCommand: [commandId: string, categoryId: string, command: Omit<Command, 'id'>];
-}>();
 
 const isOpen = ref(false);
 const tab = ref<'form' | 'json'>('form');
@@ -35,6 +40,7 @@ const command = reactive({ categoryId: '', name: '', description: '', template: 
 const parameters = ref<ParameterDraft[]>([]);
 const json = ref('');
 const error = ref('');
+const isSaving = ref(false);
 const hasCategories = computed(() => props.categories.length > 0);
 const isEditing = computed(() => Boolean(editedId.value));
 
@@ -79,7 +85,7 @@ function close() {
   isOpen.value = false;
   error.value = '';
 }
-function submitCommand() {
+async function submitCommand() {
   if (!command.categoryId || !command.name.trim() || !command.template.trim()) {
     error.value = 'Choose a category and fill in the command name and template.';
     return;
@@ -114,13 +120,24 @@ function submitCommand() {
     error.value = result.error;
     return;
   }
-  if (editedId.value) emit('updateCommand', editedId.value, command.categoryId, result.command);
-  else emit('createCommand', command.categoryId, result.command);
-  editedId.value = '';
-  resetDraft();
-  close();
+  isSaving.value = true;
+  error.value = '';
+  try {
+    if (editedId.value) {
+      await props.onUpdateCommand(editedId.value, command.categoryId, result.command);
+    } else {
+      await props.onCreateCommand(command.categoryId, result.command);
+    }
+    editedId.value = '';
+    resetDraft();
+    close();
+  } catch {
+    error.value = 'Unable to save this command.';
+  } finally {
+    isSaving.value = false;
+  }
 }
-function submitJson() {
+async function submitJson() {
   if (!command.categoryId) {
     error.value = 'Choose a category first.';
     return;
@@ -130,9 +147,17 @@ function submitJson() {
     error.value = result.error;
     return;
   }
-  emit('createCommand', command.categoryId, result.command);
-  json.value = '';
-  close();
+  isSaving.value = true;
+  error.value = '';
+  try {
+    await props.onCreateCommand(command.categoryId, result.command);
+    json.value = '';
+    close();
+  } catch {
+    error.value = 'Unable to save this command.';
+  } finally {
+    isSaving.value = false;
+  }
 }
 function selectTab(next: 'form' | 'json') {
   tab.value = next;

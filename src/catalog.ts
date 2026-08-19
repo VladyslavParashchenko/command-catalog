@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw } from 'vue';
 import type { Category, Command } from 'src/types/catalog';
 import { db } from 'src/data-layer/database';
 import type { CategoryRecord, CommandRecord } from 'src/data-layer/types';
@@ -144,7 +144,11 @@ async function saveCatalog(items: Category[]): Promise<void> {
         });
         category.commands.forEach((command, commandIndex) =>
           commandRecords.push({
-            ...command,
+            id: command.id,
+            name: command.name,
+            description: command.description,
+            template: command.template,
+            options: structuredClone(toRaw(command.options)),
             categoryId: category.id,
             order: commandIndex,
             createdAt: timestamp + commandIndex,

@@ -166,8 +166,8 @@ onMounted(async () => {
       ref="catalogEditor"
       :show-floating-button="isCommandRoute"
       :categories="categories"
-      @create-command="addCommand"
-      @update-command="saveCommand"
+      :on-create-command="addCommand"
+      :on-update-command="saveCommand"
     />
     <CategoryEditor ref="categoryEditor" @create="addCategory" @update="renameCategory" />
     <ExportDialog ref="exportDialog" :categories="categories" />
