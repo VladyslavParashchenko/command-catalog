@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep the interface readable on high-density screens. */
+@layer utilities {
+  .text-xs {
+    font-size: 0.9375rem;
+    line-height: 1.375rem;
+  }
+
+  .text-sm {
+    font-size: 1.0625rem;
+    line-height: 1.625rem;
+  }
+
+  .text-base {
+    font-size: 1.1875rem;
+    line-height: 1.875rem;
+  }
+
+  .text-lg {
+    font-size: 1.25rem;
+    line-height: 1.875rem;
+  }
+}
+
 :root {
   font-family:
     Inter,
@@ -18,7 +41,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  font-size: 17px;
+  font-size: 18px;
 }
 * {
   box-sizing: border-box;
