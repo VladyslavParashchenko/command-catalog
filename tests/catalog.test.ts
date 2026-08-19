@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('src/data-layer/database', () => {
   const table = () => ({
     clear: vi.fn(async () => undefined),
+    bulkDelete: vi.fn(async () => undefined),
     bulkPut: vi.fn(async () => undefined),
     toArray: vi.fn(async () => []),
     get: vi.fn(async () => undefined),

@@ -72,8 +72,8 @@ function edit(target: EditTarget) {
   const command = owner?.commands.find((item) => item.id === target.commandId);
   if (owner && command) catalogEditor.value?.openCommandEdit(command, owner.id);
 }
-onMounted(() => {
-  initializeCatalog();
+onMounted(async () => {
+  await initializeCatalog();
 });
 </script>
 <template>

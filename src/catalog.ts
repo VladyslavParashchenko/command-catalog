@@ -6,6 +6,8 @@ import type { CommandTreeCategory } from 'src/types/commands';
 
 export const categories = ref<Category[]>([]);
 export const catalogReady = ref(false);
+let catalogInitialization: Promise<void> | undefined;
+let catalogWriteQueue = Promise.resolve();
 export const commandRoutes = computed(() =>
   categories.value.flatMap((category) =>
     category.commands.map((command) => ({
@@ -30,18 +32,27 @@ export const commandTree = computed<CommandTreeCategory[]>(() =>
   })),
 );
 
-export async function initializeCatalog() {
-  let categoryRecords = await db.categories.toArray();
-  let commandRecords = await db.commands.toArray();
-  if (!categoryRecords.length && !commandRecords.length) {
-    categoryRecords = await db.categories.toArray();
-    commandRecords = await db.commands.toArray();
-  }
-  categories.value = buildCatalog(categoryRecords, commandRecords);
-  catalogReady.value = true;
+export function initializeCatalog() {
+  if (catalogInitialization) return catalogInitialization;
+
+  catalogInitialization = (async () => {
+    const [categoryRecords, commandRecords] = await Promise.all([
+      db.categories.toArray(),
+      db.commands.toArray(),
+    ]);
+    categories.value = buildCatalog(categoryRecords, commandRecords);
+    catalogReady.value = true;
+  })();
+
+  return catalogInitialization;
+}
+
+async function ensureCatalogInitialized() {
+  await initializeCatalog();
 }
 
 export async function addCategory(name: string) {
+  await ensureCatalogInitialized();
   const category: Category = { id: uniqueId(name, 'category'), name: name.trim(), commands: [] };
   categories.value = [...categories.value, category];
   await saveCategories();
@@ -49,6 +60,7 @@ export async function addCategory(name: string) {
 }
 
 export async function addCommand(categoryId: string, command: Omit<Command, 'id'>) {
+  await ensureCatalogInitialized();
   const category = categories.value.find((item) => item.id === categoryId);
   if (!category) throw new Error('Category not found');
   const created: Command = { ...command, id: uniqueId(command.name, 'command') };
@@ -59,6 +71,7 @@ export async function addCommand(categoryId: string, command: Omit<Command, 'id'
 }
 
 export async function renameCategory(categoryId: string, name: string) {
+  await ensureCatalogInitialized();
   categories.value = categories.value.map((category) =>
     category.id === categoryId ? { ...category, name: name.trim() } : category,
   );
@@ -70,6 +83,7 @@ export async function updateCommand(
   command: Omit<Command, 'id'>,
   categoryId: string,
 ) {
+  await ensureCatalogInitialized();
   const target = categories.value.find((item) => item.id === categoryId);
   if (!target) throw new Error('Category not found');
   const source = categories.value.find((category) =>
@@ -90,11 +104,13 @@ export async function updateCommand(
 }
 
 export async function deleteCategory(categoryId: string) {
+  await ensureCatalogInitialized();
   categories.value = categories.value.filter((category) => category.id !== categoryId);
   await saveCategories();
 }
 
 export async function deleteCommand(commandId: string) {
+  await ensureCatalogInitialized();
   categories.value = categories.value.map((category) => ({
     ...category,
     commands: category.commands.filter((command) => command.id !== commandId),
@@ -103,6 +119,7 @@ export async function deleteCommand(commandId: string) {
 }
 
 export async function replaceCatalog(items: Category[]) {
+  await ensureCatalogInitialized();
   await saveCatalog(items);
   categories.value = items;
 }
@@ -111,35 +128,50 @@ async function saveCategories() {
   await saveCatalog(categories.value);
 }
 async function saveCatalog(items: Category[]): Promise<void> {
-  const now = Date.now();
-  await db.transaction('rw', db.categories, db.commands, async () => {
-    await db.categories.clear();
-    await db.commands.clear();
-
-    const categoryRecords: CategoryRecord[] = [];
-    const commandRecords: CommandRecord[] = [];
-    items.forEach((category, categoryIndex) => {
-      const timestamp = now + categoryIndex;
-      categoryRecords.push({
-        id: category.id,
-        name: category.name,
-        order: categoryIndex,
-        createdAt: timestamp,
-        updatedAt: timestamp,
+  const write = catalogWriteQueue.then(async () => {
+    const now = Date.now();
+    await db.transaction('rw', db.categories, db.commands, async () => {
+      const categoryRecords: CategoryRecord[] = [];
+      const commandRecords: CommandRecord[] = [];
+      items.forEach((category, categoryIndex) => {
+        const timestamp = now + categoryIndex;
+        categoryRecords.push({
+          id: category.id,
+          name: category.name,
+          order: categoryIndex,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        category.commands.forEach((command, commandIndex) =>
+          commandRecords.push({
+            ...command,
+            categoryId: category.id,
+            order: commandIndex,
+            createdAt: timestamp + commandIndex,
+            updatedAt: timestamp + commandIndex,
+          }),
+        );
       });
-      category.commands.forEach((command, commandIndex) =>
-        commandRecords.push({
-          ...command,
-          categoryId: category.id,
-          order: commandIndex,
-          createdAt: timestamp + commandIndex,
-          updatedAt: timestamp + commandIndex,
-        }),
+
+      const [storedCategories, storedCommands] = await Promise.all([
+        db.categories.toArray(),
+        db.commands.toArray(),
+      ]);
+      const categoryIds = new Set(categoryRecords.map(({ id }) => id));
+      const commandIds = new Set(commandRecords.map(({ id }) => id));
+      await db.categories.bulkDelete(
+        storedCategories.filter(({ id }) => !categoryIds.has(id)).map(({ id }) => id),
       );
+      await db.commands.bulkDelete(
+        storedCommands.filter(({ id }) => !commandIds.has(id)).map(({ id }) => id),
+      );
+      await db.categories.bulkPut(categoryRecords);
+      await db.commands.bulkPut(commandRecords);
     });
-    await db.categories.bulkPut(categoryRecords);
-    await db.commands.bulkPut(commandRecords);
   });
+
+  catalogWriteQueue = write.catch(() => undefined);
+  await write;
 }
 function buildCatalog(
   categoryRecords: CategoryRecord[],

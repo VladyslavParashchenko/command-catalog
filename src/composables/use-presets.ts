@@ -5,12 +5,17 @@ import type { PresetState, SavedPreset } from 'src/types/presets';
 export function usePresets(commandId: Ref<string>) {
   const presets = ref<SavedPreset[]>([]);
   const isLoading = ref(false);
+  let loadRequest = 0;
 
   async function loadPresets() {
+    const request = ++loadRequest;
+    const requestedCommandId = commandId.value;
     isLoading.value = true;
     try {
-      const stored = await db.presets.where('commandId').equals(commandId.value).toArray();
-      presets.value = stored.sort((a, b) => b.createdAt - a.createdAt);
+      const stored = await db.presets.where('commandId').equals(requestedCommandId).toArray();
+      if (request === loadRequest && commandId.value === requestedCommandId) {
+        presets.value = stored.sort((a, b) => b.createdAt - a.createdAt);
+      }
     } finally {
       isLoading.value = false;
     }
