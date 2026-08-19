@@ -55,6 +55,7 @@ function resetDraft() {
 }
 function openCommand() {
   error.value = '';
+  tab.value = 'form';
   if (editedId.value) resetDraft();
   editedId.value = '';
   if (!command.categoryId) command.categoryId = props.categories[0]?.id ?? '';
@@ -64,6 +65,16 @@ function openCommandEdit(existing: Command, categoryId: string) {
   error.value = '';
   tab.value = 'form';
   editedId.value = existing.id;
+  json.value = JSON.stringify(
+    {
+      name: existing.name,
+      description: existing.description,
+      template: existing.template,
+      options: existing.options,
+    },
+    null,
+    2,
+  );
   Object.assign(command, {
     categoryId,
     name: existing.name,
@@ -80,7 +91,6 @@ function openCommandEdit(existing: Command, categoryId: string) {
     restrictions: option.restrictions,
     enumValues: option.type === 'enum' ? (option.restrictions?.enum ?? []) : [],
   }));
-  json.value = '';
   isOpen.value = true;
 }
 function close() {
@@ -175,7 +185,12 @@ async function submitJson() {
   isSaving.value = true;
   error.value = '';
   try {
-    await props.onCreateCommand(command.categoryId, result.command);
+    if (editedId.value) {
+      await props.onUpdateCommand(editedId.value, command.categoryId, result.command);
+    } else {
+      await props.onCreateCommand(command.categoryId, result.command);
+    }
+    editedId.value = '';
     json.value = '';
     close();
   } catch {
@@ -229,7 +244,7 @@ defineExpose({ openCommand, openCommandEdit });
       <component :is="isEditing ? Pencil : Settings2" :size="20" />
     </template>
 
-    <div v-if="!isEditing" class="border-b border-slate-200 px-6 pt-4">
+    <div class="border-b border-slate-200 px-6 pt-4">
       <button
         type="button"
         :class="[
@@ -264,7 +279,7 @@ defineExpose({ openCommand, openCommandEdit });
     </p>
 
     <form
-      v-if="!isEditing && tab === 'json'"
+      v-if="tab === 'json'"
       id="command-form"
       class="grid gap-5 p-6"
       @submit.prevent="submitJson"
